@@ -4,6 +4,9 @@ import { FILETYPES, NodeovenDocument } from './document-types';
 import {
   CreateWorkflowRunOutput,
   CreateWorkflowRunSuccessOutput,
+  GetWorkflowRunByIdSuccessfulResponse,
+  Workflow,
+  WorkflowRun,
   zRunWorkflowInput,
 } from './workflow-types';
 import { z } from 'zod';
@@ -90,17 +93,54 @@ export default class NodeovenClient {
   }
 
   /* -------------------------------- Workflows ------------------------------- */
+  async getWorkflowRunById(
+    workflowId: string,
+    workflowRunId: string
+  ): Promise<GetWorkflowRunByIdSuccessfulResponse> {
+    console.log(
+      'Request address: ',
+      `${this.baseUrl}/api/workflows/${workflowId}/run/${workflowRunId}`
+    );
+    const response = await fetch(
+      `${this.baseUrl}/api/workflows/${workflowId}/run/${workflowRunId}`,
+      {
+        method: 'GET',
+        headers: {
+          'x-api-key': this.apiKey,
+        },
+        cache: 'no-cache',
+      }
+    );
+    if (!response.ok) {
+      try {
+        const error = await response.json();
+        throw new Error(error.error);
+      } catch (error) {
+        throw new Error('Failed to get workflow, error: ' + error);
+      }
+    }
+    const responseBody = await response.json();
+    if (!responseBody) {
+      throw new Error('Workflow not found.');
+    }
+
+    return responseBody as GetWorkflowRunByIdSuccessfulResponse;
+  }
+
   async runWorkflow(
     workflowId: string,
     runWOrkflowInput: z.infer<typeof zRunWorkflowInput>
   ): Promise<CreateWorkflowRunSuccessOutput> {
-    const response = await fetch(`/api/workflows/${workflowId}/run`, {
-      method: 'POST',
-      body: JSON.stringify(runWOrkflowInput),
-      headers: {
-        'x-api-key': this.apiKey,
-      },
-    });
+    const response = await fetch(
+      `${this.baseUrl}/api/workflows/${workflowId}/run`,
+      {
+        method: 'POST',
+        body: JSON.stringify(runWOrkflowInput),
+        headers: {
+          'x-api-key': this.apiKey,
+        },
+      }
+    );
 
     if (!response.ok) {
       try {
