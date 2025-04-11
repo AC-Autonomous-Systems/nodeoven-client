@@ -1,6 +1,6 @@
 // See https://github.com/AC-Autonomous-Systems/nodeoven-client/blob/master/index.ts
 
-import { NodeovenDocument } from './document-types';
+import { FILETYPES, NodeovenDocument } from './document-types';
 import { CreateWorkflowRunOutput, zRunWorkflowInput } from './workflow-types';
 import { z } from 'zod';
 
@@ -15,30 +15,28 @@ export default class NodeovenClient {
     this.baseUrl = baseUrl;
   }
 
+  /* -------------------------------- Documents ------------------------------- */
   async uploadDocument(
-    file: File,
-    folderId: string
+    file: Blob,
+    filename: string,
+    fileType: (typeof FILETYPES)[number],
+    isSynchronous: boolean,
+    folderId?: string
   ): Promise<NodeovenDocument | Error> {
     const formData = new FormData();
     formData.append('file', file);
 
     // Validate the file name:
-    const filenameSplit = file.name.split('.');
-    if (filenameSplit.length < 2) {
-      throw new Error(
-        `Invalid file name, the filename does not have an extension.`
-      );
-    }
-    formData.append('filename', filenameSplit.slice(0, -1).join('.'));
-    formData.append(
-      'fileType',
-      filenameSplit[filenameSplit.length - 1].toLowerCase()
-    );
+    formData.append('filename', filename);
+    formData.append('fileType', fileType);
 
     formData.append('tenantId', this.workspaceId);
-    formData.append('folderId', folderId);
+    if (folderId) {
+      formData.append('folderId', folderId);
+    }
+    formData.append('isSynchronous', isSynchronous.toString());
 
-    const response = await fetch('/api/documents/upload', {
+    const response = await fetch(this.baseUrl + '/api/documents/upload', {
       method: 'POST',
       body: formData,
       headers: {
@@ -56,9 +54,38 @@ export default class NodeovenClient {
     }
 
     const responseBody = await response.json();
-    return responseBody;
+    if (!responseBody.document) {
+      throw new Error('Document not found.');
+    }
+    return responseBody.document;
+  }
+  async getDocumentById(documentId: string): Promise<NodeovenDocument> {
+    const response = await fetch(
+      `${this.baseUrl}/api/documents/${documentId}`,
+      {
+        method: 'GET',
+        headers: {
+          'x-api-key': this.apiKey,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      try {
+        const error = await response.json();
+        throw new Error(error.error);
+      } catch (error) {
+        throw new Error('Failed to get document, error: ' + error);
+      }
+    }
+    const responseBody = await response.json();
+    if (!responseBody.document) {
+      throw new Error('Document not found.');
+    }
+    return responseBody.document;
   }
 
+  /* -------------------------------- Workflows ------------------------------- */
   async runWorkflow(
     runWOrkflowInput: z.infer<typeof zRunWorkflowInput>
   ): Promise<CreateWorkflowRunOutput> {
