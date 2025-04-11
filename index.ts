@@ -1,4 +1,8 @@
-import { NodeovenDocument } from './types';
+// See https://github.com/AC-Autonomous-Systems/nodeoven-client/blob/master/index.ts
+
+import { NodeovenDocument } from './document-types';
+import { CreateWorkflowRunOutput, zRunWorkflowInput } from './workflow-types';
+import { z } from 'zod';
 
 export default class NodeovenClient {
   private workspaceId: string;
@@ -37,6 +41,9 @@ export default class NodeovenClient {
     const response = await fetch('/api/documents/upload', {
       method: 'POST',
       body: formData,
+      headers: {
+        'x-api-key': this.apiKey,
+      },
     });
 
     if (!response.ok) {
@@ -45,6 +52,30 @@ export default class NodeovenClient {
         throw new Error(error.error);
       } catch (error) {
         throw new Error('Failed to upload file, error: ' + error);
+      }
+    }
+
+    const responseBody = await response.json();
+    return responseBody;
+  }
+
+  async runWorkflow(
+    runWOrkflowInput: z.infer<typeof zRunWorkflowInput>
+  ): Promise<CreateWorkflowRunOutput> {
+    const response = await fetch('/api/workflows/run', {
+      method: 'POST',
+      body: JSON.stringify(runWOrkflowInput),
+      headers: {
+        'x-api-key': this.apiKey,
+      },
+    });
+
+    if (!response.ok) {
+      try {
+        const error = await response.json();
+        throw new Error(error.error);
+      } catch (error) {
+        throw new Error('Failed to run workflow, error: ' + error);
       }
     }
 
