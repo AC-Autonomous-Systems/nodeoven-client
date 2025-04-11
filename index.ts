@@ -1,7 +1,11 @@
 // See https://github.com/AC-Autonomous-Systems/nodeoven-client/blob/master/index.ts
 
 import { FILETYPES, NodeovenDocument } from './document-types';
-import { CreateWorkflowRunOutput, zRunWorkflowInput } from './workflow-types';
+import {
+  CreateWorkflowRunOutput,
+  CreateWorkflowRunSuccessOutput,
+  zRunWorkflowInput,
+} from './workflow-types';
 import { z } from 'zod';
 
 export default class NodeovenClient {
@@ -22,7 +26,7 @@ export default class NodeovenClient {
     fileType: (typeof FILETYPES)[number],
     isSynchronous: boolean,
     folderId?: string
-  ): Promise<NodeovenDocument | Error> {
+  ): Promise<NodeovenDocument> {
     const formData = new FormData();
     formData.append('file', file);
 
@@ -87,9 +91,10 @@ export default class NodeovenClient {
 
   /* -------------------------------- Workflows ------------------------------- */
   async runWorkflow(
+    workflowId: string,
     runWOrkflowInput: z.infer<typeof zRunWorkflowInput>
-  ): Promise<CreateWorkflowRunOutput> {
-    const response = await fetch('/api/workflows/run', {
+  ): Promise<CreateWorkflowRunSuccessOutput> {
+    const response = await fetch(`/api/workflows/${workflowId}/run`, {
       method: 'POST',
       body: JSON.stringify(runWOrkflowInput),
       headers: {
@@ -107,6 +112,6 @@ export default class NodeovenClient {
     }
 
     const responseBody = await response.json();
-    return responseBody;
+    return responseBody as CreateWorkflowRunSuccessOutput;
   }
 }
